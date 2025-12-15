@@ -1,0 +1,26 @@
+{
+  "name": "michel/console",
+  "description": "A lightweight PHP library designed to simplify command handling in console applications.",
+  "type": "package",
+  "autoload": {
+    "psr-4": {
+      "Michel\\Console\\": "src",
+      "Test\\Michel\\Console\\": "tests"
+    }
+  },
+  "require": {
+    "php": ">=7.4",
+    "ext-mbstring": "*",
+    "ext-json": "*",
+    "ext-ctype": "*"
+  },
+  "require-dev": {
+    "michel/unitester": "^1.0.0"
+  },
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "F. Michel"
+    }
+  ]
+}
