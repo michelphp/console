@@ -15,7 +15,11 @@ final class Output implements OutputInterface
     public function __construct(callable $output = null)
     {
         if ($output === null) {
-            $output = function ($message) {
+            $output = function ($message, $error = false) {
+                if ($error) {
+                    fwrite(STDERR, $message);
+                    return;
+                }
                 fwrite(STDOUT, $message);
             };
         }
@@ -26,6 +30,12 @@ final class Output implements OutputInterface
      * @var bool
      */
     private bool $verbose = false;
+
+    public function error(string $message): void
+    {
+        $output = $this->output;
+        $output($message, true);
+    }
 
     public function write(string $message): void
     {

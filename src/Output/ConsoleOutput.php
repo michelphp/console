@@ -329,7 +329,7 @@ final class ConsoleOutput implements OutputInterface
     public function write(string $message, bool $isError = false): void
     {
         if ($isError) {
-            fwrite(STDERR, $message);
+            $this->output->error($message);
             return;
         }
         $this->output->write($message);
