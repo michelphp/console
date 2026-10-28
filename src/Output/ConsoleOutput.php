@@ -219,14 +219,11 @@ final class ConsoleOutput implements OutputInterface
 
     public function progressBar(int $total, int $current): void
     {
-        if ($total <= 0) {
-            throw new InvalidArgumentException(sprintf('The total of a progress bar must be greater than 0, got %d.', $total));
-        }
-        $current = max(0, min($current, $total));
         $barWidth = 50;
-        $progress = ($current / $total) * $barWidth;
-        $bar = str_repeat('#', (int)$progress) . str_repeat(' ', $barWidth - (int)$progress);
-        $this->write(sprintf("\r[%s] %d%%", $bar, ($current / $total) * 100));
+        $ratio = $total > 0 ? $current / $total : 1;
+        $progress = (int) max(0, min($barWidth, $ratio * $barWidth));
+        $bar = str_repeat('#', $progress) . str_repeat(' ', $barWidth - $progress);
+        $this->write(sprintf("\r[%s] %d%%", $bar, $ratio * 100));
         if ($current === $total) {
             $this->write(PHP_EOL);
         }

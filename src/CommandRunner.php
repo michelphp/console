@@ -56,14 +56,17 @@ final class CommandRunner
             }
 
             $commands = [];
+            $exactCommands = [];
             foreach ($this->commands as $currentCommand) {
                 if ($currentCommand->getName() === $commandParser->getCommandName()) {
-                    $commands = [$currentCommand];
-                    break;
+                    $exactCommands[] = $currentCommand;
                 }
                 if (self::stringStartsWith($currentCommand->getName(), $commandParser->getCommandName())) {
                     $commands[] = $currentCommand;
                 }
+            }
+            if (count($exactCommands) === 1) {
+                $commands = $exactCommands;
             }
 
             if (empty($commands)) {
@@ -125,7 +128,11 @@ final class CommandRunner
                 $flags[] = $option->getShortcut();
             }
         }
-        $commandParser = $commandParser->withFlags($flags);
+        // "-f value" where -f is a flag: "value" is an argument, unless the command does not accept it
+        $flagParser = $commandParser->withFlags($flags);
+        if (count($flagParser->getArguments()) <= count($command->getArguments())) {
+            $commandParser = $flagParser;
+        }
 
         foreach ($options as $option) {
             if ($option->isFlag()) {

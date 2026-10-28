@@ -26,7 +26,6 @@ final class CommandParser
         $this->argv = $argv;
         array_shift($argv);
         $this->cmdName = $argv[0] ?? null;
-        $flags = array_merge($flags, ['h', 'v']);
 
         $ignoreKeys = [0];
         foreach ($argv as $key => $value) {

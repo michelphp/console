@@ -31,6 +31,7 @@ class CommandRunnerEdgeCaseTest extends TestCase
     {
         $this->testFlagShortcutKeepsTheNextArgument();
         $this->testExactNameIsNotAmbiguous();
+        $this->testFlagWithAValueStillWorksWithoutArguments();
         $this->testHelpShortcut();
         $this->testZeroArgument();
         $this->testFlagHasNoDefaultInHelp();
@@ -58,6 +59,18 @@ class CommandRunnerEdgeCaseTest extends TestCase
 
         [$exitCode] = $this->runCommand(['gre']);
         $this->assertStrictEquals(CommandRunner::CLI_AMBIGUOUS_COMMAND, $exitCode);
+
+        $runner = new CommandRunner([new GreetAllCommand(), new GreetAllCommand()]);
+        $exitCode = $runner->run(new CommandParser(['bin/console', 'greet-all']), new Output(function () {
+        }));
+        $this->assertStrictEquals(CommandRunner::CLI_AMBIGUOUS_COMMAND, $exitCode);
+    }
+
+    public function testFlagWithAValueStillWorksWithoutArguments()
+    {
+        [$exitCode, $output] = $this->runCommand(['greet-all', '-v', 'yes']);
+        $this->assertStrictEquals(0, $exitCode);
+        $this->assertStringContains($output, 'Hello everyone');
     }
 
     public function testHelpShortcut()
@@ -116,12 +129,16 @@ class CommandRunnerEdgeCaseTest extends TestCase
         $console = new ConsoleOutput(new Output(function ($message) use (&$output) {
             $output .= $message;
         }));
-        $console->progressBar(10, 15);
-        $this->assertStringContains($output, '100%');
+        $console->progressBar(10, 5);
+        $this->assertStrictEquals("\r[" . str_repeat('#', 25) . str_repeat(' ', 25) . '] 50%', $output);
 
-        $this->expectException(InvalidArgumentException::class, function () use ($console) {
-            $console->progressBar(0, 0);
-        });
+        $output = '';
+        $console->progressBar(10, 15);
+        $this->assertStringContains($output, '[' . str_repeat('#', 50) . '] 150%');
+
+        $output = '';
+        $console->progressBar(0, 0);
+        $this->assertStringContains($output, '[' . str_repeat('#', 50) . '] 100%');
     }
 
     private function runCommand(array $argv): array
