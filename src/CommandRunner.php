@@ -127,7 +127,7 @@ final class CommandRunner
             foreach ($options as $option) {
                 if ($option->getName() === $name || $option->getShortcut() === $name) {
                     $hasOption = true;
-                    if (!$option->isFlag() && ($value === true || empty($value))) {
+                    if (!$option->isFlag() && ($value === true || (empty($value) && !is_numeric($value)))) {
                         throw new InvalidArgumentException(sprintf('Option "%s" requires a value for command "%s".', $name, $command->getName()));
                     }
                     $argvOptions["--{$option->getName()}"] = $value;
