@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Michel Console — CLI commands in plain PHP</title>
+<meta name="description" content="michel/console is a small PHP library to write command-line tools: one interface per command, arguments, options, help, colored output, tables and prompts. No dependency, any framework.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="./">console<span>/</span></a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="#how">How it works</a>
+      <a href="#why">Why Console</a>
+      <a href="#compare">Compare</a>
+      <a href="docs.html">Documentation</a>
+      <a href="https://github.com/michelphp/console">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="hero">
+      <p class="eyebrow">PHP 7.4 to 8.4 · No dependency · Any framework</p>
+      <h1>Your CLI commands, one class each.</h1>
+      <p class="lead">Implement one interface, declare your arguments and options, register the command. Help, validation, colors, tables and prompts come with it. Nothing else to install.</p>
+      <div class="actions">
+        <a class="button primary" href="docs.html#install">Install Console</a>
+        <a class="button" href="docs.html">Read the docs</a>
+      </div>
+    </div>
+  </div>
+
+  <section id="how">
+    <div class="wrap">
+      <p class="label">How it works</p>
+      <h2>Write. Register. Run.</h2>
+      <p class="section-lead">Three steps, and <code>bin/console</code> knows your command.</p>
+      <div class="grid">
+        <div class="card">
+          <h3>1. Write</h3>
+          <p>A class that implements <code>CommandInterface</code>: a name, a description, its arguments and options, and <code>execute()</code>.</p>
+        </div>
+        <div class="card">
+          <h3>2. Register</h3>
+          <p><code>new CommandRunner([new SendEmailCommand()])</code> in your <code>bin/console</code> script, or from your container.</p>
+        </div>
+        <div class="card">
+          <h3>3. Run</h3>
+          <p><code>bin/console send-email john@example.com -s Hello</code>. Missing argument, unknown option: a clear error and a precise exit code.</p>
+        </div>
+      </div>
+      <p class="section-lead spaced">What your users see:</p>
+      <p class="terminal-title">terminal</p>
+<pre>$ bin/console send-email
+<span class="v">[ERROR] Argument "recipient" is required for command "send-email".</span>
+$ echo $?
+<span class="k">11</span>
+$ bin/console send-email john@example.com --subject="Meeting"
+Email sent to john@example.com: Meeting</pre>
+    </div>
+  </section>
+
+  <section id="why">
+    <div class="wrap">
+      <p class="label">Why Console</p>
+      <h2>Small enough to read in one sitting.</h2>
+      <p class="section-lead">A dozen classes, no magic. You can open any of them and see what happens to your <code>argv</code>.</p>
+      <div class="grid">
+        <div class="card">
+          <h3>No dependency</h3>
+          <p>Pure PHP with the <code>mbstring</code>, <code>json</code> and <code>ctype</code> extensions. Nothing else in your <code>vendor/</code>.</p>
+        </div>
+        <div class="card">
+          <h3>Any framework</h3>
+          <p>Symfony, Laravel, Slim or none: build the <code>CommandRunner</code> yourself or take it from your container.</p>
+        </div>
+        <div class="card">
+          <h3>Help for free</h3>
+          <p><code>bin/console</code> lists your commands, <code>--help</code> describes one. Type <code>c:c</code> for <code>cache:clear</code>.</p>
+        </div>
+        <div class="card">
+          <h3>Output that behaves</h3>
+          <p>Messages, tables, lists, progress bars and prompts. Errors go to STDERR, colors turn off in files and pipes.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="compare">
+    <div class="wrap">
+      <p class="label">Compare</p>
+      <h2>Between <code>$argv</code> by hand and a full console component.</h2>
+      <p class="section-lead">Reading <code>$argv</code> yourself works until the third option. A full component brings events, styles and helpers you may never use.</p>
+      <div class="table-box">
+        <table>
+          <thead>
+            <tr><th></th><th><code>$argv</code> by hand</th><th>symfony/console</th><th class="us">michel/console</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Arguments and options</td><td>Parsed by you</td><td>Declared, validated</td><td class="us">Declared, validated</td></tr>
+            <tr><td>Help and command list</td><td>Written by you</td><td>Yes</td><td class="us">Yes</td></tr>
+            <tr><td>Tables, progress bars, prompts</td><td>No</td><td>Yes, many helpers</td><td class="us">Yes, one <code>ConsoleOutput</code> class</td></tr>
+            <tr><td>Events, lazy commands, completion</td><td>No</td><td>Yes</td><td class="us">No, by design</td></tr>
+            <tr><td>Dependencies</td><td>None</td><td>Several Symfony packages</td><td class="us">None</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="never">
+    <div class="wrap">
+      <p class="label">Scope</p>
+      <h2>What Console will never do</h2>
+      <p class="section-lead">One job: turn a command line into a call to your code.</p>
+      <ul class="never">
+        <li>add a dependency</li>
+        <li>require a framework</li>
+        <li>scan your folders for commands</li>
+        <li>dispatch events</li>
+        <li>need a configuration file</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="get">
+    <div class="wrap">
+      <p class="label">Get Console</p>
+      <h2>One Composer command.</h2>
+      <p class="section-lead">Works with PHP 7.4 to 8.4. <a href="https://github.com/michelphp/paper-orm">PaperORM</a> uses it for its migration and database commands.</p>
+      <pre>$ composer require michel/console</pre>
+      <div class="actions">
+        <a class="button primary" href="docs.html#quick-start">Quick start guide</a>
+        <a class="button" href="docs.html#output">See the output helpers</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">Michel Console · <a href="https://github.com/michelphp/console">Source on GitHub</a> · <a href="docs.html">Documentation</a></div>
+</footer>
+
+</body>
+</html>

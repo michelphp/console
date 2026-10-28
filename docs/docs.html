@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Michel Console documentation</title>
+<meta name="description" content="Install and use michel/console: bin/console script, commands, arguments, options, command-line syntax, reading input, Output and ConsoleOutput, colors, verbose mode, help, exit codes and testing.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="./">console<span>/</span></a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="./">Home</a>
+      <a href="docs.html">Documentation</a>
+      <a href="https://github.com/michelphp/console">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+<div class="docs">
+
+<nav class="toc" aria-label="Documentation">
+  <ol>
+    <li><a href="#install">1. Install</a></li>
+    <li><a href="#quick-start">2. Quick start</a></li>
+    <li><a href="#command">3. Writing a command</a></li>
+    <li><a href="#arguments">4. Arguments</a></li>
+    <li><a href="#options">5. Options</a></li>
+    <li><a href="#syntax">6. Command-line syntax</a></li>
+    <li><a href="#input">7. Reading the input</a></li>
+    <li><a href="#output">8. Output</a></li>
+    <li><a href="#console-output">9. ConsoleOutput</a></li>
+    <li><a href="#colors">10. Colors</a></li>
+    <li><a href="#help">11. Help and verbose mode</a></li>
+    <li><a href="#errors">12. Errors and exit codes</a></li>
+    <li><a href="#testing">13. Testing a command</a></li>
+  </ol>
+</nav>
+
+<article>
+<h1>Documentation</h1>
+<p>One interface to implement, one runner to call. <code>CommandRunner</code> finds the command, checks its arguments and options, and calls <code>execute()</code>.</p>
+
+<h2 id="install">1. Install</h2>
+<pre>$ composer require michel/console</pre>
+<p>PHP 7.4 to 8.4, with the <code>mbstring</code>, <code>json</code> and <code>ctype</code> extensions. No other package.</p>
+
+<h2 id="quick-start">2. Quick start</h2>
+<p>Create <code>bin/console</code> at the root of your project:</p>
+<pre><span class="k">#!/usr/bin/env php</span>
+&lt;?php
+
+<span class="k">use</span> Michel\Console\CommandParser;
+<span class="k">use</span> Michel\Console\CommandRunner;
+<span class="k">use</span> Michel\Console\Output;
+
+<span class="k">require</span> dirname(__DIR__) . <span class="v">'/vendor/autoload.php'</span>;
+
+$runner = <span class="k">new</span> CommandRunner([
+    <span class="k">new</span> SendEmailCommand(),
+]);
+
+<span class="k">exit</span>($runner->run(<span class="k">new</span> CommandParser(), <span class="k">new</span> Output()));</pre>
+<pre>$ chmod +x bin/console
+$ bin/console                 <span class="c"># lists the commands</span></pre>
+<p>With a framework, build the commands from your container after booting it, and pass them to <code>CommandRunner</code> the same way.</p>
+
+<h2 id="command">3. Writing a command</h2>
+<pre><span class="k">use</span> Michel\Console\Argument\CommandArgument;
+<span class="k">use</span> Michel\Console\Command\CommandInterface;
+<span class="k">use</span> Michel\Console\InputInterface;
+<span class="k">use</span> Michel\Console\Option\CommandOption;
+<span class="k">use</span> Michel\Console\OutputInterface;
+
+<span class="k">final class</span> SendEmailCommand <span class="k">implements</span> CommandInterface
+{
+    <span class="k">public function</span> getName(): string
+    {
+        <span class="k">return</span> <span class="v">'send-email'</span>;
+    }
+
+    <span class="k">public function</span> getDescription(): string
+    {
+        <span class="k">return</span> <span class="v">'Sends an email to a recipient.'</span>;
+    }
+
+    <span class="k">public function</span> getArguments(): array
+    {
+        <span class="k">return</span> [
+            CommandArgument::required(<span class="v">'recipient'</span>, <span class="v">'Email address of the recipient'</span>),
+        ];
+    }
+
+    <span class="k">public function</span> getOptions(): array
+    {
+        <span class="k">return</span> [
+            CommandOption::withValue(<span class="v">'subject'</span>, <span class="v">'s'</span>, <span class="v">'Subject of the email'</span>, <span class="v">'No subject'</span>),
+            CommandOption::flag(<span class="v">'dry-run'</span>, <span class="v">'d'</span>, <span class="v">'Do not send anything'</span>),
+        ];
+    }
+
+    <span class="k">public function</span> execute(InputInterface $input, OutputInterface $output): void
+    {
+        $recipient = $input->getArgumentValue(<span class="v">'recipient'</span>);
+        $subject = $input->getOptionValue(<span class="v">'subject'</span>);
+
+        <span class="k">if</span> ($input->getOptionValue(<span class="v">'dry-run'</span>)) {
+            $output->writeln(<span class="v">"Would send to $recipient: $subject"</span>);
+            <span class="k">return</span>;
+        }
+
+        <span class="c">// send it</span>
+        $output->writeln(<span class="v">"Email sent to $recipient: $subject"</span>);
+    }
+}</pre>
+<p>Command names may contain <code>:</code> to group them: <code>cache:clear</code>, <code>user:create</code>. To report a failure, throw an exception from <code>execute()</code> (see <a href="#errors">Errors and exit codes</a>).</p>
+
+<h2 id="arguments">4. Arguments</h2>
+<p>Arguments are positional: their order in <code>getArguments()</code> is their order on the command line.</p>
+<pre>CommandArgument::required(<span class="v">'recipient'</span>, <span class="v">'Email address'</span>);
+CommandArgument::optional(<span class="v">'format'</span>, <span class="v">'html'</span>, <span class="v">'html or text'</span>);   <span class="c">// default: 'html'</span>
+<span class="k">new</span> CommandArgument(<span class="v">'format'</span>, <span class="v">false</span>, <span class="v">'html'</span>, <span class="v">'html or text'</span>);     <span class="c">// same, with the constructor</span></pre>
+<ul>
+  <li>A name contains letters only: <code>recipient</code>, not <code>user_id</code> or <code>user-id</code>. It is stored in lower case.</li>
+  <li>A required argument cannot have a default value.</li>
+  <li>A required argument given as an empty string (<code>""</code>) is missing; <code>0</code> is a value.</li>
+  <li>More arguments than declared is an error.</li>
+</ul>
+
+<h2 id="options">5. Options</h2>
+<pre>CommandOption::withValue(<span class="v">'subject'</span>, <span class="v">'s'</span>, <span class="v">'Subject of the email'</span>, <span class="v">'No subject'</span>); <span class="c">// takes a value, with a default</span>
+CommandOption::withValue(<span class="v">'limit'</span>, <span class="v">'l'</span>, <span class="v">'Maximum number of rows'</span>);           <span class="c">// takes a value, no default</span>
+CommandOption::flag(<span class="v">'force'</span>, <span class="v">'f'</span>, <span class="v">'Skip the confirmation'</span>);                   <span class="c">// present or not</span></pre>
+<ul>
+  <li>A name contains letters and dashes: <code>dry-run</code>. A shortcut is one letter, or <code>null</code>.</li>
+  <li>A default value is a scalar: string, int, float or bool.</li>
+  <li><code>help</code>, <code>h</code>, <code>verbose</code> and <code>v</code> are reserved for every command: a command that declares them fails with an error.</li>
+</ul>
+
+<h2 id="syntax">6. Command-line syntax</h2>
+<div class="table-box">
+<table>
+  <thead><tr><th>You type</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td><code>bin/console send-email john@example.com</code></td><td>Argument <code>recipient</code> = <code>john@example.com</code></td></tr>
+    <tr><td><code>--subject=Hello</code>, <code>--subject="Hello you"</code></td><td>Long option with its value, joined by <code>=</code></td></tr>
+    <tr><td><code>-s Hello</code></td><td>Shortcut, value after a space</td></tr>
+    <tr><td><code>--dry-run</code>, <code>-d</code></td><td>Flag set to <code>true</code></td></tr>
+    <tr><td><code>-df</code></td><td>Several flags at once: <code>-d</code> and <code>-f</code></td></tr>
+    <tr><td><code>bin/console c:c</code></td><td>Runs <code>cache:clear</code>: each part of the name may be shortened</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="note"><strong>A long option takes its value with <code>=</code>.</strong> <code>--subject Hello</code> reads <code>--subject</code> without a value and <code>Hello</code> as an argument; the command then fails with <code>Option "subject" requires a value</code>. Write <code>--subject=Hello</code> or <code>-s Hello</code>.</div>
+<p>A shortened name must match a single command: with <code>user:create</code> and <code>user:list</code>, <code>u:c</code> works and <code>u</code> lists both and stops. A name typed in full always wins, even if it is the beginning of another one.</p>
+
+<h2 id="input">7. Reading the input</h2>
+<pre>$input->getArgumentValue(<span class="v">'recipient'</span>);   <span class="c">// the value, or the default of an optional argument</span>
+$input->getOptionValue(<span class="v">'subject'</span>);      <span class="c">// the value, the default, or null if neither</span>
+$input->getOptionValue(<span class="v">'dry-run'</span>);      <span class="c">// true if given, false otherwise</span></pre>
+<p>Values typed on the command line are strings: cast them (<code>(int) $input-&gt;getOptionValue('limit')</code>). Default values keep the type you declared.</p>
+<div class="note"><strong>Read flags with <code>getOptionValue()</code>, not <code>hasOption()</code>.</strong> Every flag of the command is in the input, set to <code>false</code> when absent, so <code>hasOption('dry-run')</code> is always true.</div>
+
+<h2 id="output">8. Output</h2>
+<p><code>Output</code> writes. By default, to STDOUT, and to STDERR for errors:</p>
+<pre>$output = <span class="k">new</span> Output();</pre>
+<p>Pass a callable to send the text anywhere else, a log, a buffer, a test:</p>
+<pre>$output = <span class="k">new</span> Output(<span class="k">function</span> (string $message, bool $error = <span class="v">false</span>) {
+    file_put_contents(<span class="v">'/var/log/cli.log'</span>, $message, FILE_APPEND);
+});</pre>
+<p><code>OutputInterface</code> has five methods: <code>write()</code>, <code>writeln()</code>, <code>error()</code>, <code>setVerbose()</code>, <code>isVerbose()</code>.</p>
+
+<h2 id="console-output">9. ConsoleOutput</h2>
+<p>Wrap the output in <code>ConsoleOutput</code> for formatted messages, lists, tables and prompts:</p>
+<pre><span class="k">use</span> Michel\Console\Output\ConsoleOutput;
+
+$io = <span class="k">new</span> ConsoleOutput($output);
+$io->title(<span class="v">'User report'</span>);
+$io->table([<span class="v">'ID'</span>, <span class="v">'Name'</span>], [[<span class="v">1</span>, <span class="v">'John'</span>], [<span class="v">2</span>, <span class="v">'Jane'</span>]]);
+$io->success(<span class="v">'Report generated.'</span>);</pre>
+<div class="table-box">
+<table>
+  <thead><tr><th>Method</th><th>Shows</th></tr></thead>
+  <tbody>
+    <tr><td><code>success()</code>, <code>info()</code>, <code>warning()</code></td><td>A colored block: <code>[OK]</code>, <code>[INFO]</code>, <code>[WARNING]</code></td></tr>
+    <tr><td><code>error()</code></td><td>A red <code>[ERROR]</code> block, written to STDERR</td></tr>
+    <tr><td><code>debug()</code></td><td>A <code>[DEBUG]</code> block, only in <a href="#help">verbose mode</a></td></tr>
+    <tr><td><code>title($text)</code></td><td>A title, underlined with <code>=</code></td></tr>
+    <tr><td><code>boxed($text, '*', 1)</code></td><td>Text in a box, wrapped to the terminal width</td></tr>
+    <tr><td><code>list()</code>, <code>numberedList()</code>, <code>indentedList()</code></td><td>A dash list, a numbered list, a nested list</td></tr>
+    <tr><td><code>listKeyValues($items, true)</code></td><td><code>key : value</code> lines, keys aligned when the second argument is <code>true</code></td></tr>
+    <tr><td><code>table($headers, $rows)</code></td><td>A table; long cells are cut to fit the terminal</td></tr>
+    <tr><td><code>json($data)</code></td><td>Pretty-printed JSON</td></tr>
+    <tr><td><code>progressBar($total, $current)</code></td><td>A 50-character bar and a percentage, redrawn on the same line</td></tr>
+    <tr><td><code>spinner($seconds)</code></td><td>A spinner for the given number of seconds</td></tr>
+    <tr><td><code>confirm($question)</code></td><td>Asks <code>[y/n]</code>, returns <code>true</code> for <code>y</code> or <code>yes</code></td></tr>
+    <tr><td><code>ask($question, $hidden, $required)</code></td><td>Reads an answer; hidden input (passwords) is not supported on Windows</td></tr>
+    <tr><td><code>writeColor($text, 'green', 'black')</code></td><td>Text with a foreground and an optional background color</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="colors">10. Colors</h2>
+<p>Colors are ANSI codes. They are written only when they will be seen:</p>
+<ul>
+  <li>Output to a terminal: colors.</li>
+  <li>Output redirected to a file or a pipe (<code>bin/console report &gt; report.txt</code>, <code>| grep</code>): plain text.</li>
+  <li><code>NO_COLOR</code> set in the environment: plain text, whatever the output.</li>
+  <li><code>Output</code> with your own callable: colors, as written.</li>
+</ul>
+<p>Foreground colors: <code>black</code>, <code>dark_gray</code>, <code>red</code>, <code>light_red</code>, <code>green</code>, <code>light_green</code>, <code>yellow</code>, <code>light_yellow</code>, <code>blue</code>, <code>light_blue</code>, <code>purple</code>, <code>light_purple</code>, <code>cyan</code>, <code>light_cyan</code>, <code>light_gray</code>, <code>white</code>. Backgrounds: <code>black</code>, <code>red</code>, <code>green</code>, <code>yellow</code>, <code>blue</code>, <code>magenta</code>, <code>cyan</code>, <code>light_gray</code>. An unknown color name is ignored.</p>
+
+<h2 id="help">11. Help and verbose mode</h2>
+<pre>$ bin/console                     <span class="c"># list of the commands</span>
+$ bin/console --help              <span class="c"># same, also -h</span>
+$ bin/console send-email --help   <span class="c"># description, arguments and options of one command, also -h</span>
+$ bin/console send-email john@example.com -v</pre>
+<p><code>-v</code> or <code>--verbose</code> works with every command, without declaring it. It shows the <code>debug()</code> messages and, after the command, its execution time and peak memory. Inside a command, <code>$output-&gt;isVerbose()</code> tells you if it is on.</p>
+
+<h2 id="errors">12. Errors and exit codes</h2>
+<p><code>run()</code> returns the exit code: pass it to <code>exit()</code>. Any exception thrown by a command is caught, its message is shown as an <code>[ERROR]</code> block on STDERR.</p>
+<div class="table-box">
+<table>
+  <thead><tr><th>Code</th><th>Constant</th><th>When</th></tr></thead>
+  <tbody>
+    <tr><td><code>0</code></td><td><code>CommandRunner::CLI_SUCCESS</code></td><td>The command ran, or the help was shown</td></tr>
+    <tr><td><code>1</code></td><td><code>CommandRunner::CLI_ERROR</code></td><td>The command threw an exception</td></tr>
+    <tr><td><code>10</code></td><td><code>CommandRunner::CLI_COMMAND_NOT_FOUND</code></td><td>No command matches the name</td></tr>
+    <tr><td><code>11</code></td><td><code>CommandRunner::CLI_INVALID_ARGUMENTS</code></td><td>Missing argument, too many arguments, unknown option, option without its value</td></tr>
+    <tr><td><code>12</code></td><td><code>CommandRunner::CLI_AMBIGUOUS_COMMAND</code></td><td>A shortened name matches several commands; they are listed</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="testing">13. Testing a command</h2>
+<p>Give the runner your own argv and an <code>Output</code> that keeps the text:</p>
+<pre>$text = <span class="v">''</span>;
+$output = <span class="k">new</span> Output(<span class="k">function</span> (string $message) <span class="k">use</span> (&amp;$text) {
+    $text .= $message;
+});
+
+$runner = <span class="k">new</span> CommandRunner([<span class="k">new</span> SendEmailCommand()]);
+$code = $runner->run(<span class="k">new</span> CommandParser([<span class="v">'bin/console'</span>, <span class="v">'send-email'</span>, <span class="v">'john@example.com'</span>, <span class="v">'-d'</span>]), $output);
+
+<span class="c">// $code === 0</span>
+<span class="c">// $text === "Would send to john@example.com: No subject\n"</span></pre>
+<p>The first item of the array is the script name, as in <code>$_SERVER['argv']</code>.</p>
+
+</article>
+</div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">Michel Console · <a href="https://github.com/michelphp/console">Source on GitHub</a></div>
+</footer>
+
+</body>
+</html>
