@@ -38,6 +38,98 @@ class CommandRunnerEdgeCaseTest extends TestCase
         $this->testClassNameIsRejected();
         $this->testTableWithColumnsThatDoNotDivideTheWidth();
         $this->testProgressBarLimits();
+        $this->testColorsAreKeptWithACustomOutput();
+        $this->testNoColorDisablesColors();
+        $this->testUnknownColorIsIgnored();
+        $this->testAccentsAreAligned();
+        $this->testLongMessageKeepsItsPipes();
+        $this->testInvalidArgumentsExitCode();
+        $this->testArgumentErrorsAndValidation();
+    }
+
+    public function testColorsAreKeptWithACustomOutput()
+    {
+        $output = '';
+        $console = new ConsoleOutput(new Output(function ($message) use (&$output) {
+            $output .= $message;
+        }));
+        $console->writeColor('ok', 'green');
+        $this->assertStrictEquals("\033[0;32mok\033[0m", $output);
+    }
+
+    public function testNoColorDisablesColors()
+    {
+        putenv('NO_COLOR=1');
+        $decorated = (new Output())->isDecorated();
+        putenv('NO_COLOR');
+        $this->assertFalse($decorated);
+    }
+
+    public function testUnknownColorIsIgnored()
+    {
+        $errors = [];
+        set_error_handler(function (int $level, string $message) use (&$errors) {
+            $errors[] = $message;
+            return true;
+        });
+        $output = '';
+        $console = new ConsoleOutput(new Output(function ($message) use (&$output) {
+            $output .= $message;
+        }));
+        $console->writeColor('ok', 'orange');
+        restore_error_handler();
+
+        $this->assertEmpty($errors);
+        $this->assertStrictEquals("ok\033[0m", $output);
+    }
+
+    public function testAccentsAreAligned()
+    {
+        $output = '';
+        $console = new ConsoleOutput(new Output(function ($message) use (&$output) {
+            $output .= $message;
+        }));
+        $console->listKeyValues(['né' => 'a', 'abc' => 'b'], true);
+        $this->assertStringContains($output, "\033[0;32mné \033[0m");
+        $this->assertStringContains($output, "\033[0;32mabc\033[0m");
+    }
+
+    public function testLongMessageKeepsItsPipes()
+    {
+        $output = '';
+        $console = new ConsoleOutput(new Output(function ($message) use (&$output) {
+            $output .= $message;
+        }));
+        $console->error(str_repeat('x ', 500) . 'a|b');
+        $this->assertStringContains($output, 'a|b');
+    }
+
+    public function testInvalidArgumentsExitCode()
+    {
+        [$exitCode] = $this->runCommand(['greet']);
+        $this->assertStrictEquals(CommandRunner::CLI_INVALID_ARGUMENTS, $exitCode);
+
+        [$exitCode] = $this->runCommand(['greet', 'john', '--unknown']);
+        $this->assertStrictEquals(CommandRunner::CLI_INVALID_ARGUMENTS, $exitCode);
+
+        [$exitCode] = $this->runCommand(['greet', 'john', 'doe']);
+        $this->assertStrictEquals(CommandRunner::CLI_INVALID_ARGUMENTS, $exitCode);
+
+        [$exitCode] = $this->runCommand(['unknown']);
+        $this->assertStrictEquals(CommandRunner::CLI_COMMAND_NOT_FOUND, $exitCode);
+    }
+
+    public function testArgumentErrorsAndValidation()
+    {
+        try {
+            new \Michel\Console\Argument\CommandArgument('my-file');
+            $this->fail('An invalid argument name must be rejected.');
+        } catch (InvalidArgumentException $e) {
+            $this->assertStringStartsWith($e->getMessage(), 'Argument name');
+        }
+
+        \Michel\Console\Argument\CommandArgument::required('id')->validate('0');
+        $this->assertTrue(true);
     }
 
     public function testFlagShortcutKeepsTheNextArgument()

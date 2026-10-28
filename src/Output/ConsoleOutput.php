@@ -4,6 +4,7 @@ namespace Michel\Console\Output;
 
 
 use InvalidArgumentException;
+use Michel\Console\Output as StandardOutput;
 use Michel\Console\OutputInterface;
 use RuntimeException;
 
@@ -41,6 +42,8 @@ final class ConsoleOutput implements OutputInterface
     ];
 
     private OutputInterface $output;
+
+    private ?int $terminalWidth = null;
 
     public static function create(OutputInterface $output): ConsoleOutput
     {
@@ -124,7 +127,7 @@ final class ConsoleOutput implements OutputInterface
         foreach ($items as $key => $value) {
             $value = $this->variableToString($value);
             $value = implode(' ', explode(PHP_EOL, $value));
-            $key = str_pad($key, $maxKeyLength, ' ', STR_PAD_RIGHT);
+            $key = self::pad($key, $maxKeyLength);
             $this->writeColor($key, 'green');
             $this->write(' : ');
             $this->writeColor($value, 'white');
@@ -199,7 +202,7 @@ final class ConsoleOutput implements OutputInterface
         }
 
         foreach ($headers as $index => $header) {
-            $this->write(str_pad($header, $columnWidths[$index] + 2));
+            $this->write(self::pad($header, $columnWidths[$index] + 2));
         }
         $this->write(PHP_EOL);
         $this->write(str_repeat('-', array_sum($columnWidths) + count($columnWidths) * 2));
@@ -210,7 +213,7 @@ final class ConsoleOutput implements OutputInterface
             for ($lineIndex = 0; $lineIndex < $maxLines; $lineIndex++) {
                 foreach ($row as $index => $lines) {
                     $line = $lines[$lineIndex] ?? ''; // Récupère la ligne actuelle ou une chaîne vide
-                    $this->write(str_pad($line, $columnWidths[$index] + 2));
+                    $this->write(self::pad($line, $columnWidths[$index] + 2));
                 }
                 $this->write(PHP_EOL);
             }
@@ -298,13 +301,13 @@ final class ConsoleOutput implements OutputInterface
         if ($lineLength > $boxWidth) {
             $lineLength = $boxWidth - ($padding * 2) - 2;
         }
-        $lines = explode('|', wordwrap($message, $lineLength, '|', true));
+        $lines = explode("\n", wordwrap($message, $lineLength, "\n", true));
         $border = str_repeat($borderChar, $lineLength + ($padding * 2) + 2);
 
         $this->write($border . PHP_EOL);
         foreach ($lines as $line) {
             $strPad = str_repeat(' ', $padding);
-            $this->write($borderChar . $strPad . str_pad($line, $lineLength) . $strPad . $borderChar . PHP_EOL);
+            $this->write($borderChar . $strPad . self::pad($line, $lineLength) . $strPad . $borderChar . PHP_EOL);
         }
         $this->write($border . PHP_EOL);
         $this->write(PHP_EOL);
@@ -313,18 +316,34 @@ final class ConsoleOutput implements OutputInterface
     public function writeColor(string $message, ?string $color = null, ?string $background = null, bool $isError = false): void
     {
 
+        if (!$this->isDecorated($isError)) {
+            $this->write($message, $isError);
+            return;
+        }
+
         $formattedMessage = '';
 
-        if ($color) {
+        if ($color && isset(self::FOREGROUND_COLORS[$color])) {
             $formattedMessage .= "\033[" . self::FOREGROUND_COLORS[$color] . 'm';
         }
-        if ($background) {
+        if ($background && isset(self::BG_COLORS[$background])) {
             $formattedMessage .= "\033[" . self::BG_COLORS[$background] . 'm';
         }
 
         $formattedMessage .= $message . "\033[0m";
 
         $this->write($formattedMessage, $isError);
+    }
+
+    /**
+     * Whether colors may be written: false when the standard output is redirected to a file or a pipe.
+     */
+    public function isDecorated(bool $error = false): bool
+    {
+        if ($this->output instanceof StandardOutput || $this->output instanceof self) {
+            return $this->output->isDecorated($error);
+        }
+        return true;
     }
 
     public function write(string $message, bool $isError = false): void
@@ -352,7 +371,7 @@ final class ConsoleOutput implements OutputInterface
         }
 
         foreach ($formattedMessage as $line) {
-            $line = str_pad($line, $lineLength).PHP_EOL;
+            $line = self::pad($line, $lineLength).PHP_EOL;
             $this->writeColor($line, 'white', $color, $isError);
         }
 
@@ -369,9 +388,9 @@ final class ConsoleOutput implements OutputInterface
 
         if ($lineLength > $consoleWidth) {
             $lineLength = $consoleWidth;
-            $lines = explode('|', wordwrap($formattedMessage, $lineLength, '|', true));
+            $lines = explode("\n", wordwrap($formattedMessage, $lineLength, "\n", true));
             $formattedMessage = array_map(function ($line) use ($lineLength) {
-                return str_pad($line, $lineLength);
+                return self::pad($line, $lineLength);
             }, $lines);
         }
         return [$formattedMessage, $lineLength, $color];
@@ -379,11 +398,22 @@ final class ConsoleOutput implements OutputInterface
 
     private function geTerminalWidth(): int
     {
-        $width = 85;
-        if (getenv('TERM')) {
-            $width = ((int) @exec('tput cols') ?: $width);
+        if ($this->terminalWidth === null) {
+            $width = 85;
+            if (getenv('TERM')) {
+                $width = ((int) @exec('tput cols') ?: $width);
+            }
+            $this->terminalWidth = $width - 5;
         }
-        return $width - 5;
+        return $this->terminalWidth;
+    }
+
+    /**
+     * str_pad() counting characters instead of bytes, so "é" takes one column.
+     */
+    private static function pad(string $text, int $length): string
+    {
+        return $text . str_repeat(' ', max(0, $length - mb_strlen($text)));
     }
 
     private function variableToString($variable): string

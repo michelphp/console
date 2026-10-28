@@ -12,10 +12,10 @@ final class CommandArgument
     public  function __construct(string $name, bool $isRequired = false, $defaultValue = null, ?string $description = null)
     {
         if ($name === '') {
-            throw new \InvalidArgumentException("Option name cannot be empty.");
+            throw new \InvalidArgumentException("Argument name cannot be empty.");
         }
         if (!ctype_alpha($name)) {
-            throw new \InvalidArgumentException("Option name must contain only letters. '$name' is invalid.");
+            throw new \InvalidArgumentException("Argument name must contain only letters. '$name' is invalid.");
         }
 
         if ($isRequired && $defaultValue !== null) {
@@ -30,7 +30,7 @@ final class CommandArgument
 
     public function validate($value): void
     {
-        if ($this->isRequired && empty($value)) {
+        if ($this->isRequired && ($value === null || $value === '' || $value === false || $value === [])) {
             throw new \InvalidArgumentException(sprintf('The required argument "%s" was not provided.', $this->name));
         }
     }

@@ -1,10 +1,14 @@
 {
   "name": "michel/console",
   "description": "A lightweight PHP library designed to simplify command handling in console applications.",
-  "type": "package",
+  "type": "library",
   "autoload": {
     "psr-4": {
-      "Michel\\Console\\": "src",
+      "Michel\\Console\\": "src"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
       "Test\\Michel\\Console\\": "tests"
     }
   },

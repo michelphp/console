@@ -147,14 +147,14 @@ final class CommandRunner
                 if ($option->getName() === $name || $option->getShortcut() === $name) {
                     $hasOption = true;
                     if (!$option->isFlag() && ($value === true || (empty($value) && !is_numeric($value)))) {
-                        throw new InvalidArgumentException(sprintf('Option "%s" requires a value for command "%s".', $name, $command->getName()));
+                        throw new InvalidArgumentException(sprintf('Option "%s" requires a value for command "%s".', $name, $command->getName()), self::CLI_INVALID_ARGUMENTS);
                     }
                     $argvOptions["--{$option->getName()}"] = $value;
                     break;
                 }
             }
             if (!$hasOption) {
-                throw new InvalidArgumentException(sprintf('Option "%s" is not defined for command "%s".', $name, $command->getName()));
+                throw new InvalidArgumentException(sprintf('Option "%s" is not defined for command "%s".', $name, $command->getName()), self::CLI_INVALID_ARGUMENTS);
             }
         }
 
@@ -164,7 +164,7 @@ final class CommandRunner
         foreach ($arguments as $key => $argument) {
             $keyArg = $argument->getName();
             if ($argument->isRequired() && (!$commandParser->hasArgument($key) || $commandParser->getArgumentValue($key) === '')) {
-                throw new InvalidArgumentException(sprintf('Argument "%s" is required for command "%s".', $argument->getName(), $command->getName()));
+                throw new InvalidArgumentException(sprintf('Argument "%s" is required for command "%s".', $argument->getName(), $command->getName()), self::CLI_INVALID_ARGUMENTS);
             }
             if ($commandParser->hasArgument($key)) {
                 $argv["--{$keyArg}"] = $commandParser->getArgumentValue($key);
@@ -174,7 +174,7 @@ final class CommandRunner
         }
 
         if (count($commandParser->getArguments()) > count($arguments)) {
-            throw new InvalidArgumentException(sprintf('Too many arguments for command "%s". Expected %d, got %d.', $command->getName(), count($arguments), count($commandParser->getArguments())));
+            throw new InvalidArgumentException(sprintf('Too many arguments for command "%s". Expected %d, got %d.', $command->getName(), count($arguments), count($commandParser->getArguments())), self::CLI_INVALID_ARGUMENTS);
         }
 
         $startTime = microtime(true);
