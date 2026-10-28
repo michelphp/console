@@ -14,12 +14,19 @@ final class CommandParser
     private ?string $cmdName;
     private array $options = [];
     private array $arguments = [];
+    private array $argv;
 
-    public function __construct(?array $argv = null)
+    /**
+     * @param array|null $argv
+     * @param string[] $flags Shortcuts that never take a value: "-f value" keeps "value" as an argument
+     */
+    public function __construct(?array $argv = null, array $flags = [])
     {
         $argv = $argv ?? $_SERVER['argv'] ?? [];
+        $this->argv = $argv;
         array_shift($argv);
         $this->cmdName = $argv[0] ?? null;
+        $flags = array_merge($flags, ['h', 'v']);
 
         $ignoreKeys = [0];
         foreach ($argv as $key => $value) {
@@ -41,7 +48,7 @@ final class CommandParser
                     }
                 } else {
                     $this->options[$optionName] = true;
-                    if (isset($argv[$key + 1]) && !self::startsWith($argv[$key + 1], '-')) {
+                    if (!in_array($optionName, $flags, true) && isset($argv[$key + 1]) && !self::startsWith($argv[$key + 1], '-')) {
                         $ignoreKeys[] = $key + 1;
                         $this->options[$optionName] = $argv[$key + 1];
                     }
@@ -50,6 +57,16 @@ final class CommandParser
                 $this->arguments[] = $value;
             }
         }
+    }
+
+    /**
+     * Parses the same argv again, knowing which shortcuts are flags.
+     *
+     * @param string[] $flags
+     */
+    public function withFlags(array $flags): self
+    {
+        return new self($this->argv, $flags);
     }
 
     public function getCommandName(): ?string

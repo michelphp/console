@@ -12,7 +12,7 @@ final class Output implements OutputInterface
      */
     private $output;
 
-    public function __construct(callable $output = null)
+    public function __construct(?callable $output = null)
     {
         if ($output === null) {
             $output = function ($message, $error = false) {

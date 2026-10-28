@@ -33,7 +33,7 @@ final class CommandRunner
     {
         $this->defaultCommand = new HelpCommand();
         foreach ($commands as $command) {
-            if (!is_subclass_of($command, CommandInterface::class)) {
+            if (!$command instanceof CommandInterface) {
                 $commandName = is_object($command) ? get_class($command) : $command;
                 throw new InvalidArgumentException(sprintf('Command "%s" must implement "%s".', $commandName, CommandInterface::class));
             }
@@ -50,13 +50,17 @@ final class CommandRunner
 
         try {
 
-            if ($commandParser->getCommandName() === null || $commandParser->getCommandName() === '--help') {
+            if (in_array($commandParser->getCommandName(), [null, '--help', '-h'], true)) {
                 $this->defaultCommand->execute(new Input($this->defaultCommand->getName(), [], []), $output);
                 return self::CLI_SUCCESS;
             }
 
             $commands = [];
             foreach ($this->commands as $currentCommand) {
+                if ($currentCommand->getName() === $commandParser->getCommandName()) {
+                    $commands = [$currentCommand];
+                    break;
+                }
                 if (self::stringStartsWith($currentCommand->getName(), $commandParser->getCommandName())) {
                     $commands[] = $currentCommand;
                 }
@@ -78,7 +82,7 @@ final class CommandRunner
             }
 
             $command = $commands[0];
-            if ($commandParser->hasOption('help')) {
+            if ($commandParser->hasOption('help') || $commandParser->hasOption('h')) {
                 $this->showCommandHelp($command, $output);
                 return self::CLI_SUCCESS;
             }
@@ -115,6 +119,14 @@ final class CommandRunner
         }
 
         $options[] = CommandOption::flag('verbose', 'v', 'Enable verbose output');
+        $flags = [];
+        foreach ($options as $option) {
+            if ($option->isFlag() && $option->getShortcut() !== null) {
+                $flags[] = $option->getShortcut();
+            }
+        }
+        $commandParser = $commandParser->withFlags($flags);
+
         foreach ($options as $option) {
             if ($option->isFlag()) {
                 $argvOptions["--{$option->getName()}"] = false;
@@ -144,7 +156,7 @@ final class CommandRunner
         $arguments = $command->getArguments();
         foreach ($arguments as $key => $argument) {
             $keyArg = $argument->getName();
-            if ($argument->isRequired() && (!$commandParser->hasArgument($key) || empty($commandParser->getArgumentValue($key)))) {
+            if ($argument->isRequired() && (!$commandParser->hasArgument($key) || $commandParser->getArgumentValue($key) === '')) {
                 throw new InvalidArgumentException(sprintf('Argument "%s" is required for command "%s".', $argument->getName(), $command->getName()));
             }
             if ($commandParser->hasArgument($key)) {
@@ -202,7 +214,7 @@ final class CommandRunner
             if (!$option->isFlag()) {
                 $name = sprintf('%s=VALUE', $name);
             }
-            if ($option->getDefaultValue() !== null) {
+            if (!$option->isFlag() && $option->getDefaultValue() !== null) {
                 $name = sprintf('%s (default: %s)', $name, $option->getDefaultValue());
             }
 

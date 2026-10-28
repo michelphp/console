@@ -171,7 +171,7 @@ final class ConsoleOutput implements OutputInterface
     public function table(array $headers, array $rows): void
     {
         $maxWidth = $this->geTerminalWidth();
-        $maxWidthPerColumn = $maxWidth / count($headers);
+        $maxWidthPerColumn = intdiv($maxWidth, max(1, count($headers)));
         $columnWidths = array_map(function ($header) {
             return mb_strlen($header);
         }, $headers);
@@ -219,6 +219,10 @@ final class ConsoleOutput implements OutputInterface
 
     public function progressBar(int $total, int $current): void
     {
+        if ($total <= 0) {
+            throw new InvalidArgumentException(sprintf('The total of a progress bar must be greater than 0, got %d.', $total));
+        }
+        $current = max(0, min($current, $total));
         $barWidth = 50;
         $progress = ($current / $total) * $barWidth;
         $bar = str_repeat('#', (int)$progress) . str_repeat(' ', $barWidth - (int)$progress);
